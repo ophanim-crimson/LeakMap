@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+env/
+.env
+
+# Node
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# Database / OS
+*.db
+*.sqlite
+.DS_Store
+Thumbs.db
+uploads/
+
+# IDEs
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
