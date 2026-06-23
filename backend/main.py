@@ -198,7 +198,7 @@ def create_report(payload: schemas.ReportCreate, db: Session = Depends(get_db)):
     
     # Store PostGIS geometry point using WKT or ST_SetSRID + ST_Point/ST_MakePoint
     # We will use ST_SetSRID and ST_MakePoint if PostgreSQL is active, otherwise None/default
-    from .database import is_sqlite
+from database import is_sqlite
     geom = func.ST_SetSRID(func.ST_MakePoint(payload.longitude, payload.latitude), 4326) if not is_sqlite else f"POINT({payload.longitude} {payload.latitude})"
     
     report = models.Report(
