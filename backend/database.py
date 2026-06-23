@@ -8,12 +8,7 @@ load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL", "")
 
-# Fallback to local SQLite if no PostgreSQL URL is configured or if it points to default postgres localhost
-if not DATABASE_URL or "postgresql" in DATABASE_URL:
-    # Check if a postgres service is actually up (in our case we know it's not)
-    # So we force sqlite for simple local development convenience if desired.
-    # Let's check if the user specifically wants postgres or has it configured.
-    # Since we saw port 5432 is down, we use SQLite automatically as a local developer fallback!
+if not DATABASE_URL:
     DATABASE_URL = "sqlite:///leakmap.db"
 
 is_sqlite = DATABASE_URL.startswith("sqlite")
