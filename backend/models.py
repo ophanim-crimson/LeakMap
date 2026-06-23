@@ -1,7 +1,7 @@
 import datetime
 from sqlalchemy import Column, Integer, String, Text, Float, DateTime, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import relationship
-from .database import Base, is_sqlite
+from database import Base, is_sqlite
 
 # Conditional import of Geometry to support SQLite fallback without GeoAlchemy2 issues
 if not is_sqlite:
