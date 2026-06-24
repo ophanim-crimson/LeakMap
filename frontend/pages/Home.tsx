@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { Button, Input, Select, Space, Row, Col, Spin, Empty, Typography } from 'antd';
 import { SearchOutlined, FilterOutlined, SyncOutlined, AimOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import StatsCards from '../components/StatsCards';
-import LeafletMap from '../components/LeafletMap';
-import ReportCard from '../components/ReportCard';
-import { fetchReports, fetchStatistics, Report, Statistics } from '../api';
+import StatsCards from '../src/components/StatsCards';
+import LeafletMap from '../src/components/LeafletMap';
+import ReportCard from '../src/components/ReportCard';
+import { fetchReports, fetchStatistics, Report } from '../src/api';
+
 
 const { Title, Paragraph } = Typography;
 const { Option } = Select;
