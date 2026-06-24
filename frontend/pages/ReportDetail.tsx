@@ -10,10 +10,11 @@ import {
   CameraOutlined
 } from '@ant-design/icons';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import LeafletMap from '../components/LeafletMap';
-import VerificationPanel from '../components/VerificationPanel';
-import UpdateFeed from '../components/UpdateFeed';
-import { fetchReportById, Report } from '../api';
+import LeafletMap from '../src/components/LeafletMap';
+import VerificationPanel from '../src/components/VerificationPanel';
+import UpdateFeed from '../src/components/UpdateFeed';
+import { fetchReportById, verifyReport, addReportUpdate, Report } from '../src/api';
+
 
 const { Title, Paragraph, Text } = Typography;
 
