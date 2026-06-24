@@ -15,7 +15,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import LocationPicker from '../src/components/LocationPicker';
 import PhotoUpload from '../src/components/PhotoUpload';
-import { createReport, uploadPhoto } from '../src/api';
+import { createReport, uploadPhoto, Report } from '../src/api';
 
 
 const { Title, Paragraph, Text } = Typography;
