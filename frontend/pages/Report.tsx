@@ -13,9 +13,10 @@ import {
   PlusOutlined
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import LocationPicker from '../components/LocationPicker';
-import PhotoUpload from '../components/PhotoUpload';
-import { createReport, Report as APIReport } from '../api';
+import LocationPicker from '../src/components/LocationPicker';
+import PhotoUpload from '../src/components/PhotoUpload';
+import { createReport, uploadPhoto } from '../src/api';
+
 
 const { Title, Paragraph, Text } = Typography;
 const { TextArea } = Input;
