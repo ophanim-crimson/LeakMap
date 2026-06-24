@@ -5,7 +5,8 @@ import { useNavigate } from 'react-router-dom';
 import StatsCards from '../src/components/StatsCards';
 import LeafletMap from '../src/components/LeafletMap';
 import ReportCard from '../src/components/ReportCard';
-import { fetchReports, fetchStatistics, Report } from '../src/api';
+import { fetchReports, fetchStatistics, Report, Statistics } from '../src/api';
+
 
 
 const { Title, Paragraph } = Typography;
