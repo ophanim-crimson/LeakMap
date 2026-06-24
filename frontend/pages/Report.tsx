@@ -34,7 +34,7 @@ const Report: React.FC = () => {
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   
   // Result State
-  const [createdReport, setCreatedReport] = useState<APIReport | null>(null);
+const [result, setResult] = useState<Report | null>(null);
 
   const handleLocationSelect = (lat: number, lng: number) => {
     setLocation([lat, lng]);
