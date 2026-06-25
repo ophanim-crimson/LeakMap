@@ -165,7 +165,8 @@ const PhotoUpload: React.FC<PhotoUploadProps> = ({ onPhotoUploaded, uploadedUrl 
         }}>
           {/* Resolve URL relative or absolute */}
           <Image
-            src={uploadedUrl.startsWith('http') ? uploadedUrl : `http://localhost:8000${uploadedUrl}`}
+        src={uploadedUrl.startsWith('http') ? uploadedUrl : `${import.meta.env.VITE_API_URL || ''}${uploadedUrl}`}
+
             alt="Leak Preview"
             style={{ maxHeight: '260px', objectFit: 'contain', width: '100%' }}
           />
