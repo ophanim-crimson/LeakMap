@@ -8,6 +8,7 @@ load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL", "")
 
+# Use SQLite only if no DATABASE_URL is set at all
 if not DATABASE_URL:
     DATABASE_URL = "sqlite:///leakmap.db"
 
@@ -18,15 +19,12 @@ if is_sqlite:
         DATABASE_URL,
         connect_args={"check_same_thread": False}
     )
-    
-    # Register event listener to load sqlean extensions on connection
+
     @event.listens_for(engine, "connect")
     def connect(dbapi_connection, connection_record):
         if isinstance(dbapi_connection, sqlite3.Connection):
             dbapi_connection.enable_load_extension(True)
-            # Load Math, Regexp, and other extensions if available
             try:
-                # Resolve path to sqlean folder relative to project root
                 base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
                 math_path = os.path.join(base_dir, "sqlean", "math.dll")
                 regexp_path = os.path.join(base_dir, "sqlean", "regexp.dll")
