@@ -1,7 +1,7 @@
 import axios from 'axios';
 
-// Get API base URL from environment or default to local FastAPI dev server
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+// Use relative paths to rely on vite proxy locally and vercel proxy in production
+const API_BASE = import.meta.env.VITE_API_URL || '';
 
 const api = axios.create({
   baseURL: API_BASE,
