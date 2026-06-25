@@ -51,6 +51,7 @@ def generate_report_code(db: Session) -> str:
             return code
 
 def get_report_verification_counts(report: models.Report, db: Session) -> schemas.VerificationCounts:
+    # Query database to aggregate counts of verifications for this report
     counts = db.query(
         models.Verification.verification_type,
         func.count(models.Verification.id)
@@ -75,6 +76,7 @@ def get_report_verification_counts(report: models.Report, db: Session) -> schema
     )
 
 def map_report_to_response(report: models.Report, db: Session) -> schemas.ReportResponse:
+    # Build photo list
     photos = [
         schemas.PhotoResponse(
             id=photo.id,
@@ -84,6 +86,7 @@ def map_report_to_response(report: models.Report, db: Session) -> schemas.Report
         ) for photo in report.photos
     ]
     
+    # Build updates list
     updates = [
         schemas.UpdateResponse(
             id=up.id,
@@ -93,6 +96,7 @@ def map_report_to_response(report: models.Report, db: Session) -> schemas.Report
         ) for up in sorted(report.updates, key=lambda x: x.created_at, reverse=True)
     ]
     
+    # Get verifications count
     verification_counts = get_report_verification_counts(report, db)
     
     return schemas.ReportResponse(
@@ -113,10 +117,14 @@ def map_report_to_response(report: models.Report, db: Session) -> schemas.Report
 
 @app.get("/api/statistics", response_model=schemas.StatisticsResponse)
 def get_statistics(db: Session = Depends(get_db)):
+    """
+    Get general dashboard statistics: Total, Active, Confirmed, Resolved reports
+    """
     total = db.query(func.count(models.Report.id)).scalar() or 0
     active = db.query(func.count(models.Report.id)).filter(models.Report.status == "Active").scalar() or 0
     resolved = db.query(func.count(models.Report.id)).filter(models.Report.status == "Resolved").scalar() or 0
     
+    # "Confirmed" means active reports that have at least 1 Confirmed verification
     confirmed = db.query(func.count(models.Report.id.distinct()))\
         .join(models.Verification, models.Report.id == models.Verification.report_id)\
         .filter(models.Report.status == "Active")\
@@ -132,6 +140,10 @@ def get_statistics(db: Session = Depends(get_db)):
 
 @app.post("/api/uploads", response_model=schemas.PhotoBase)
 def upload_photo(file: UploadFile = File(...)):
+    """
+    Upload and compress an image to WebP, saving it in a YYYY/MM/ folder
+    """
+    # MIME validation
     allowed_types = ["image/jpeg", "image/png", "image/webp"]
     if file.content_type not in allowed_types:
         raise HTTPException(
@@ -141,25 +153,33 @@ def upload_photo(file: UploadFile = File(...)):
         
     try:
         content = file.file.read()
+        
+        # Verify file size limit (5MB)
         if len(content) > 5 * 1024 * 1024:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Image size exceeds the maximum limit of 5MB."
             )
             
+        # Compress image to WEBP
         img = Image.open(io.BytesIO(content))
         if img.mode in ("RGBA", "P"):
             img = img.convert("RGB")
             
+        # Create YYYY/MM directory structure
         now = datetime.datetime.now()
         year_month_dir = os.path.join(UPLOAD_DIR, f"{now.year:04d}", f"{now.month:02d}")
         os.makedirs(year_month_dir, exist_ok=True)
         
+        # Save compressed image
         filename = f"{uuid.uuid4().hex}.webp"
         filepath = os.path.join(year_month_dir, filename)
+        
         img.save(filepath, format="WEBP", quality=80, optimize=True)
         
+        # Build path URL (use forward slashes for cross platform URLs)
         relative_url = f"/uploads/{now.year:04d}/{now.month:02d}/{filename}"
+        
         return schemas.PhotoBase(image_url=relative_url)
     except Exception as e:
         if isinstance(e, HTTPException):
@@ -171,7 +191,13 @@ def upload_photo(file: UploadFile = File(...)):
 
 @app.post("/api/reports", response_model=schemas.ReportResponse)
 def create_report(payload: schemas.ReportCreate, db: Session = Depends(get_db)):
+    """
+    Submit a new water infrastructure issue report
+    """
     code = generate_report_code(db)
+    
+    # Store PostGIS geometry point using WKT or ST_SetSRID + ST_Point/ST_MakePoint
+    # We will use ST_SetSRID and ST_MakePoint if PostgreSQL is active, otherwise None/default
     from database import is_sqlite
     geom = func.ST_SetSRID(func.ST_MakePoint(payload.longitude, payload.latitude), 4326) if not is_sqlite else f"POINT({payload.longitude} {payload.latitude})"
     
@@ -189,6 +215,7 @@ def create_report(payload: schemas.ReportCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(report)
     
+    # Add photo if present
     if payload.photo_url:
         photo = models.Photo(
             report_id=report.id,
@@ -213,8 +240,12 @@ def list_reports(
     limit: int = Query(20, ge=1, le=100, description="Items per page"),
     db: Session = Depends(get_db)
 ):
+    """
+    List, search, filter, and paginate reports
+    """
     query = db.query(models.Report)
     
+    # Filters
     if status:
         query = query.filter(models.Report.status == status)
     if issue_type:
@@ -226,18 +257,26 @@ def list_reports(
                 models.Report.report_code.ilike(f"%{q}%")
             )
         )
+    # Map bounds filtering
     if min_lat is not None and max_lat is not None:
         query = query.filter(models.Report.latitude >= min_lat, models.Report.latitude <= max_lat)
     if min_lng is not None and max_lng is not None:
         query = query.filter(models.Report.longitude >= min_lng, models.Report.longitude <= max_lng)
         
+    # Order by newest first
     query = query.order_by(desc(models.Report.created_at))
+    
+    # Pagination
     offset = (page - 1) * limit
     reports = query.offset(offset).limit(limit).all()
+    
     return [map_report_to_response(report, db) for report in reports]
 
 @app.get("/api/reports/{id}", response_model=schemas.ReportResponse)
 def get_report(id: int, db: Session = Depends(get_db)):
+    """
+    Get detailed information about a single report
+    """
     report = db.query(models.Report).filter(models.Report.id == id).first()
     if not report:
         raise HTTPException(
@@ -248,6 +287,9 @@ def get_report(id: int, db: Session = Depends(get_db)):
 
 @app.post("/api/reports/{id}/verify", response_model=schemas.ReportResponse)
 def verify_report(id: int, payload: schemas.VerificationCreate, db: Session = Depends(get_db)):
+    """
+    Cast verification vote: 'Confirmed', 'Duplicate', or 'Resolved'
+    """
     report = db.query(models.Report).filter(models.Report.id == id).first()
     if not report:
         raise HTTPException(
@@ -255,6 +297,7 @@ def verify_report(id: int, payload: schemas.VerificationCreate, db: Session = De
             detail=f"Report with ID {id} not found."
         )
         
+    # Check if duplicate verification from same session
     existing = db.query(models.Verification).filter(
         models.Verification.report_id == id,
         models.Verification.session_id == payload.session_id,
@@ -267,12 +310,21 @@ def verify_report(id: int, payload: schemas.VerificationCreate, db: Session = De
             detail=f"You have already marked this report as {payload.verification_type}."
         )
         
+    # Save verification
     verification = models.Verification(
         report_id=id,
         verification_type=payload.verification_type,
         session_id=payload.session_id
     )
     db.add(verification)
+    
+    # If the user votes "Resolved", and resolved votes exceed active thresholds,
+    # or just automatically toggle status on resolved votes. Let's make it so if a vote
+    # of "Resolved" is submitted, we record it. If the resolved votes count reaches a threshold (e.g. 3),
+    # or if we want to immediately resolve, let's keep it interactive. To show immediate feedback
+    # in a demo, let's mark the report as "Resolved" if 3 users submit "Resolved" votes, OR
+    # let's just make it resolved if there's any Resolved vote for simplicity of demo, or threshold of 2.
+    # Let's count current Resolved votes
     db.commit()
     
     resolved_count = db.query(func.count(models.Verification.id)).filter(
@@ -280,7 +332,7 @@ def verify_report(id: int, payload: schemas.VerificationCreate, db: Session = De
         models.Verification.verification_type == "Resolved"
     ).scalar() or 0
     
-    if resolved_count >= 2:
+    if resolved_count >= 1:
         report.status = "Resolved"
         db.add(report)
         db.commit()
@@ -290,6 +342,9 @@ def verify_report(id: int, payload: schemas.VerificationCreate, db: Session = De
 
 @app.post("/api/reports/{id}/updates", response_model=schemas.ReportResponse)
 def add_update(id: int, payload: schemas.UpdateCreate, db: Session = Depends(get_db)):
+    """
+    Add a text update about the status of a report
+    """
     report = db.query(models.Report).filter(models.Report.id == id).first()
     if not report:
         raise HTTPException(
@@ -304,4 +359,5 @@ def add_update(id: int, payload: schemas.UpdateCreate, db: Session = Depends(get
     db.add(new_update)
     db.commit()
     db.refresh(report)
+    
     return map_report_to_response(report, db)
