@@ -159,7 +159,8 @@ const ReportDetail: React.FC = () => {
                 style={{ border: '1px solid var(--border-color)', overflow: 'hidden' }}
               >
                 <Image
-                  src={report.photos[0].image_url.startsWith('http') ? report.photos[0].image_url : `http://localhost:8000${report.photos[0].image_url}`}
+              src={report.photos[0].image_url.startsWith('http') ? report.photos[0].image_url : `${import.meta.env.VITE_API_URL || ''}${report.photos[0].image_url}`}
+
                   alt={report.issue_type}
                   style={{ maxHeight: '400px', objectFit: 'contain', width: '100%' }}
                 />
