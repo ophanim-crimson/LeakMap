@@ -1,7 +1,0 @@
-{
-  "rewrites": [
-    { "source": "/api/:path*", "destination": "https://leakmap.onrender.com/api/:path*" },
-    { "source": "/uploads/:path*", "destination": "https://leakmap.onrender.com/uploads/:path*" },
-    { "source": "/((?!assets|favicon).*)", "destination": "/index.html" }
-  ]
-}
