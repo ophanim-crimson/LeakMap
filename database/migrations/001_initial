@@ -1,0 +1,77 @@
+-- ============================================================
+-- LeakMap Database Migration 001 – Initial Schema
+-- Requires: PostgreSQL + PostGIS extension
+-- ============================================================
+
+-- Enable PostGIS
+CREATE EXTENSION IF NOT EXISTS postgis;
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- ── Reports ──────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS reports (
+    id           SERIAL PRIMARY KEY,
+    report_code  VARCHAR(12)        UNIQUE NOT NULL,
+    issue_type   VARCHAR(50)        NOT NULL
+                     CHECK (issue_type IN (
+                         'leak', 'overflow', 'damaged_tap',
+                         'broken_valve', 'supply_issue', 'other'
+                     )),
+    description  TEXT,
+    latitude     DOUBLE PRECISION   NOT NULL,
+    longitude    DOUBLE PRECISION   NOT NULL,
+    geometry     GEOMETRY(Point, 4326),
+    status       VARCHAR(20)        NOT NULL DEFAULT 'active'
+                     CHECK (status IN ('active', 'confirmed', 'resolved', 'duplicate')),
+    created_at   TIMESTAMPTZ        NOT NULL DEFAULT NOW()
+);
+
+-- Auto-populate geometry from lat/lon via trigger
+CREATE OR REPLACE FUNCTION set_report_geometry()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.geometry := ST_SetSRID(ST_MakePoint(NEW.longitude, NEW.latitude), 4326);
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_set_report_geometry
+    BEFORE INSERT OR UPDATE OF latitude, longitude
+    ON reports
+    FOR EACH ROW
+    EXECUTE FUNCTION set_report_geometry();
+
+-- ── Photos ───────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS photos (
+    id          SERIAL PRIMARY KEY,
+    report_id   INTEGER            NOT NULL REFERENCES reports(id) ON DELETE CASCADE,
+    image_url   TEXT               NOT NULL,
+    uploaded_at TIMESTAMPTZ        NOT NULL DEFAULT NOW()
+);
+
+-- ── Verifications ─────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS verifications (
+    id                SERIAL PRIMARY KEY,
+    report_id         INTEGER     NOT NULL REFERENCES reports(id) ON DELETE CASCADE,
+    verification_type VARCHAR(20) NOT NULL
+                          CHECK (verification_type IN ('confirmed', 'duplicate', 'resolved')),
+    session_id        VARCHAR(64) NOT NULL,
+    created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (report_id, session_id)   -- one vote per session per report
+);
+
+-- ── Community Updates ─────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS updates (
+    id          SERIAL PRIMARY KEY,
+    report_id   INTEGER     NOT NULL REFERENCES reports(id) ON DELETE CASCADE,
+    update_text TEXT        NOT NULL,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- ── Indexes ───────────────────────────────────────────────────
+CREATE INDEX IF NOT EXISTS idx_reports_geometry    ON reports USING GIST(geometry);
+CREATE INDEX IF NOT EXISTS idx_reports_status      ON reports(status);
+CREATE INDEX IF NOT EXISTS idx_reports_issue_type  ON reports(issue_type);
+CREATE INDEX IF NOT EXISTS idx_reports_created_at  ON reports(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_photos_report_id    ON photos(report_id);
+CREATE INDEX IF NOT EXISTS idx_verif_report_id     ON verifications(report_id);
+CREATE INDEX IF NOT EXISTS idx_updates_report_id   ON updates(report_id);
